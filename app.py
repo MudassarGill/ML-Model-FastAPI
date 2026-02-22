@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, computed_field
 from typing import Literal, Annotated
 import pickle
@@ -10,6 +11,15 @@ with open('model.pkl', 'rb') as f:
     model = pickle.load(f)
 
 app = FastAPI()
+
+# Allow frontend HTML + JS to connect (IMPORTANT)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],     # you can replace * with your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 tier_1_cities = ["Mumbai", "Delhi", "Bangalore", "Chennai", "Kolkata", "Hyderabad", "Pune"]
 tier_2_cities = [
@@ -30,9 +40,12 @@ class UserInput(BaseModel):
     income_lpa: Annotated[float, Field(..., gt=0, description='Annual salary of the user in lpa')]
     smoker: Annotated[bool, Field(..., description='Is user a smoker')]
     city: Annotated[str, Field(..., description='The city that the user belongs to')]
-    occupation: Annotated[Literal['retired', 'freelancer', 'student', 'government_job',
-       'business_owner', 'unemployed', 'private_job'], Field(..., description='Occupation of the user')]
-    
+    occupation: Annotated[
+        Literal['retired', 'freelancer', 'student', 'government_job',
+                'business_owner', 'unemployed', 'private_job'],
+        Field(..., description='Occupation of the user')
+    ]
+
     @computed_field
     @property
     def bmi(self) -> float:
@@ -83,12 +96,13 @@ def predict_premium(data: UserInput):
 
     prediction = model.predict(input_df)[0]
 
-    return JSONResponse(status_code=200, content={'response': {
-    'predicted_category': prediction,
-    'confidence': 0.95,  # optional if you have it
-    'class_probabilities': {}  # optional
-}})
-
-
-
-
+    return JSONResponse(
+        status_code=200,
+        content={
+            'response': {
+                'predicted_category': prediction,
+                'confidence': 0.95,  # optional
+                'class_probabilities': {}  # optional
+            }
+        }
+    )
