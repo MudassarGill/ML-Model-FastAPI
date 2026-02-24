@@ -106,3 +106,6 @@ def predict_premium(data: UserInput):
             }
         }
     )
+
+
+
